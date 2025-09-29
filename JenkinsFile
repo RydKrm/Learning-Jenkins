@@ -9,14 +9,15 @@ pipeline {
     }
 
     stages {
+
         stage('Checkout') {
             steps {
                 echo 'Pulling code from GitHub...'
-                cleanWs()
                 checkout scm
                 sh 'pwd && ls -la'
             }
         }
+
 
         stage('Install Dependencies') {
             steps {
