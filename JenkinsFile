@@ -1,11 +1,17 @@
 pipeline {
     agent any
 
+    parameters {
+        booleanParam(name: 'IS_DEPLOY', defaultValue: false, description: 'Deploy the application after build')
+        choice(name: 'ENVIRONMENT', choices: ['test', 'prod'], description: 'Select the environment')
+    }
+
     environment {
         NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
         HOME            = "${WORKSPACE}"
         PORT            = "3030"
         JWT_SECRET      = "your_jwt_secret"
+        BRANCH_NAME     = "" // will fill dynamically
     }
 
     stages {
@@ -14,10 +20,13 @@ pipeline {
             steps {
                 echo 'Pulling code from GitHub...'
                 checkout scm
-                sh 'pwd && ls -la'
+                script {
+                    // capture branch name dynamically
+                    env.BRANCH_NAME = sh(script: "git rev-parse --abbrev-ref HEAD", returnStdout: true).trim()
+                    echo "Checked out branch: ${env.BRANCH_NAME}"
+                }
             }
         }
-
 
         stage('Install Dependencies') {
             steps {
@@ -30,7 +39,7 @@ pipeline {
 
         stage('Test') {
             steps {
-                echo 'Running tests...'
+                echo "Running tests on branch: ${env.BRANCH_NAME} in ${params.ENVIRONMENT} environment"
                 sh 'npm install --save-dev jest'
                 sh 'npm test'
             }
@@ -49,8 +58,14 @@ pipeline {
         }
 
         stage('Deploy') {
+            when {
+                allOf {
+                    expression { params.IS_DEPLOY == true }
+                    expression { params.ENVIRONMENT == 'prod' }
+                }
+            }
             steps {
-                echo 'Deploying the application...'
+                echo "Deploying the application to ${params.ENVIRONMENT} environment..."
                 sh '''
                     echo "Starting deployment process..."
                     # Example deployment: copy files, restart service, or docker run
