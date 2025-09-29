@@ -3,9 +3,11 @@ pipeline {
     
     // Define environment variables
     environment {
-        NODE_VERSION = '18'  // Specify Node.js version
+        // NODE_VERSION = '18'  // Specify Node.js version
         NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
         HOME = "${WORKSPACE}"
+        PORT=3030
+        JWT_SECRET=your_jwt_secret
     }
     
     // Define build tools
@@ -120,10 +122,10 @@ pipeline {
             echo 'Pipeline execution completed'
             
             // Clean up npm cache
-            sh 'npm cache clean --force || true'
+            // sh 'npm cache clean --force || true'
             
             // Archive build artifacts
-            archiveArtifacts artifacts: '**/*', excludes: 'node_modules/**/*', allowEmptyArchive: true
+            // archiveArtifacts artifacts: '**/*', excludes: 'node_modules/**/*', allowEmptyArchive: true
         }
         
         success {
