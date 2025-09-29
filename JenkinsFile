@@ -1,0 +1,160 @@
+pipeline {
+    agent any
+    
+    // Define environment variables
+    environment {
+        NODE_VERSION = '18'  // Specify Node.js version
+        NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
+        HOME = "${WORKSPACE}"
+    }
+    
+    // Define build tools
+    tools {
+        nodejs "${NODE_VERSION}"  // This requires NodeJS plugin
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                echo 'Pulling code from GitHub...'
+                // Clean workspace before checkout
+                cleanWs()
+                
+                // Checkout code from GitHub
+                checkout scm
+                
+                // Display current directory and files
+                sh 'pwd'
+                sh 'ls -la'
+            }
+        }
+        
+        stage('Install Dependencies') {
+            steps {
+                echo 'Installing Node.js dependencies...'
+                
+                // Clean npm cache and install dependencies
+                sh 'npm cache clean --force'
+                sh 'npm install '
+                
+                // Verify installation
+                sh 'node --version'
+                sh 'npm --version'
+            }
+        }
+        
+        stage('Test') {
+            steps {
+                echo 'Running tests...'
+                
+                // Run your test command
+                sh 'npm install --save-dev jest'
+                sh 'npm run test'
+            }
+            
+            // Archive test results if you have test reports
+            post {
+                always {
+                    // If you're generating test reports (like with Jest), uncomment below:
+                    // publishTestResults testResultsPattern: 'test-results.xml'
+                    
+                    // Archive test artifacts
+                    archiveArtifacts artifacts: 'coverage/**/*', allowEmptyArchive: true
+                }
+            }
+        }
+        
+        stage('Build') {
+            steps {
+                echo 'Building the application...'
+                
+                // If you have a build script, uncomment and modify:
+                // sh 'npm run build'
+                
+                // For now, we'll just verify the build environment
+                // sh 'npm list --depth=0'
+                
+                echo 'Build completed successfully'
+            }
+        }
+        
+        stage('Deploy') {
+            steps {
+                echo 'Deploying the application...'
+                
+                // Example deployment steps - modify based on your deployment target:
+                
+                // Option 1: Deploy to local server
+                script {
+                    sh '''
+                        echo "Starting deployment process..."
+                        
+                        # Example: Copy files to deployment directory
+                        # sudo cp -r * /var/www/your-app/
+                        
+                        # Example: Restart application service
+                        # sudo systemctl restart your-app
+                        
+                        # For now, just simulate deployment
+                        echo "Application deployed successfully!"
+                        
+                        # You can add more deployment commands here
+                        echo "Deployment target: Local Server"
+                        echo "Deployment time: $(date)"
+                    '''
+                }
+                
+                // Option 2: Deploy using Docker (uncomment if using Docker)
+                // sh 'docker build -t your-app:${BUILD_NUMBER} .'
+                // sh 'docker run -d -p 3000:3000 --name your-app-${BUILD_NUMBER} your-app:${BUILD_NUMBER}'
+                
+                // Option 3: Deploy to cloud (AWS, Azure, etc.)
+                // Add your cloud deployment commands here
+            }
+        }
+    }
+    
+    // Post-build actions
+    post {
+        always {
+            echo 'Pipeline execution completed'
+            
+            // Clean up npm cache
+            sh 'npm cache clean --force || true'
+            
+            // Archive build artifacts
+            archiveArtifacts artifacts: '**/*', excludes: 'node_modules/**/*', allowEmptyArchive: true
+        }
+        
+        success {
+            echo 'Pipeline succeeded! 🎉'
+            
+            // Send success notification (optional)
+            // emailext (
+            //     subject: "Build Success: ${env.JOB_NAME} - ${env.BUILD_NUMBER}",
+            //     body: "The build was successful!",
+            //     to: "your-email@example.com"
+            // )
+        }
+        
+        failure {
+            echo 'Pipeline failed! ❌'
+            
+            // Send failure notification (optional)
+            // emailext (
+            //     subject: "Build Failed: ${env.JOB_NAME} - ${env.BUILD_NUMBER}",
+            //     body: "The build failed. Check the console output for details.",
+            //     to: "your-email@example.com"
+            // )
+        }
+        
+        unstable {
+            echo 'Pipeline is unstable'
+        }
+        
+        cleanup {
+            // Final cleanup
+            echo 'Performing final cleanup...'
+        }
+    }
+}
