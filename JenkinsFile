@@ -7,7 +7,7 @@ pipeline {
         NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
         HOME = "${WORKSPACE}"
         PORT=3030
-        JWT_SECRET=your_jwt_secret
+        JWT_SECRET="your_jwt_secret"
     }
     
     // Define build tools
