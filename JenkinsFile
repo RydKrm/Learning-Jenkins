@@ -2,8 +2,16 @@ pipeline {
     agent any
 
     parameters {
-        booleanParam(name: 'IS_DEPLOY', defaultValue: false, description: 'Deploy the application after build')
-        choice(name: 'ENVIRONMENT', choices: ['test', 'prod'], description: 'Select the environment')
+        booleanParam(
+            name: 'IS_DEPLOY',
+            defaultValue: false,
+            description: 'Check to deploy after build'
+        )
+        choice(
+            name: 'ENVIRONMENT',
+            choices: ['test', 'prod'],
+            description: 'Choose the environment for testing or deployment'
+        )
     }
 
     environment {
@@ -11,26 +19,41 @@ pipeline {
         HOME            = "${WORKSPACE}"
         PORT            = "3030"
         JWT_SECRET      = "your_jwt_secret"
-        BRANCH_NAME     = "" // will fill dynamically
     }
 
     stages {
 
+        stage('Confirm Parameters') {
+            steps {
+                echo "➡️ Parameter values:"
+                echo "   IS_DEPLOY   = ${params.IS_DEPLOY}"
+                echo "   ENVIRONMENT = ${params.ENVIRONMENT}"
+            }
+        }
+
         stage('Checkout') {
             steps {
-                echo 'Pulling code from GitHub...'
+                echo '📥 Pulling code from GitHub...'
                 checkout scm
+                sh 'pwd && ls -la'
+            }
+        }
+
+        stage('Get Branch Name') {
+            steps {
                 script {
-                    // capture branch name dynamically
-                    env.BRANCH_NAME = sh(script: "git rev-parse --abbrev-ref HEAD", returnStdout: true).trim()
-                    echo "Checked out branch: ${env.BRANCH_NAME}"
+                    def branchName = env.GIT_BRANCH ?: sh(
+                        script: "git rev-parse --abbrev-ref HEAD",
+                        returnStdout: true
+                    ).trim()
+                    echo "🌿 Running on branch: ${branchName}"
                 }
             }
         }
 
         stage('Install Dependencies') {
             steps {
-                echo 'Installing Node.js dependencies...'
+                echo '📦 Installing Node.js dependencies...'
                 sh 'npm cache clean --force'
                 sh 'npm install'
                 sh 'node -v && npm -v'
@@ -38,8 +61,11 @@ pipeline {
         }
 
         stage('Test') {
+            when {
+                expression { params.ENVIRONMENT == 'test' }
+            }
             steps {
-                echo "Running tests on branch: ${env.BRANCH_NAME} in ${params.ENVIRONMENT} environment"
+                echo '🧪 Running tests (test environment)...'
                 sh 'npm install --save-dev jest'
                 sh 'npm test'
             }
@@ -52,20 +78,17 @@ pipeline {
 
         stage('Build') {
             steps {
-                echo 'Building the application...'
+                echo '⚒️ Building the application...'
                 sh 'npm run build || echo "No build script found"'
             }
         }
 
         stage('Deploy') {
             when {
-                allOf {
-                    expression { params.IS_DEPLOY == true }
-                    expression { params.ENVIRONMENT == 'prod' }
-                }
+                expression { params.IS_DEPLOY && params.ENVIRONMENT == 'prod' }
             }
             steps {
-                echo "Deploying the application to ${params.ENVIRONMENT} environment..."
+                echo '🚀 Deploying the application (production)...'
                 sh '''
                     echo "Starting deployment process..."
                     # Example deployment: copy files, restart service, or docker run
@@ -78,16 +101,16 @@ pipeline {
 
     post {
         always {
-            echo 'Pipeline execution completed'
+            echo '✅ Pipeline execution completed'
         }
         success {
-            echo 'Pipeline succeeded! 🎉'
+            echo '🎉 Pipeline succeeded!'
         }
         failure {
-            echo 'Pipeline failed! ❌'
+            echo '❌ Pipeline failed!'
         }
         unstable {
-            echo 'Pipeline is unstable ⚠️'
+            echo '⚠️ Pipeline is unstable'
         }
     }
 }
